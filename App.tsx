@@ -1,8 +1,16 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Feedback } from './types';
 import DrawingCanvas from './components/DrawingCanvas';
 import { evaluateDrawing, generateChallengeImage } from './services/geminiService';
+
+const LOADING_MESSAGES = [
+  "도화지를 펼치고 있어요...",
+  "AI가 연필을 깎고 있어요...",
+  "멋진 밑그림을 그리는 중이에요...",
+  "거의 다 그려가요! 잠시만요...",
+  "마지막 선을 다듬고 있어요!"
+];
 
 const App: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState<number>(1);
@@ -12,12 +20,39 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  
+  // 이미지 캐시 저장소 (이미 생성된 도안은 다시 생성하지 않음)
+  const imageCache = useRef<Record<number, { url: string, name: string }>>({});
+
+  // 로딩 메시지 순환 타이머
+  useEffect(() => {
+    let interval: number;
+    if (isGeneratingImage) {
+      interval = window.setInterval(() => {
+        setLoadingMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+      }, 2500);
+    }
+    return () => clearInterval(interval);
+  }, [isGeneratingImage]);
 
   const loadLevel = useCallback(async (level: number) => {
-    setIsGeneratingImage(true);
     setFeedback(null);
     setCurrentLevel(level);
+
+    // 캐시 확인
+    if (imageCache.current[level]) {
+      setCurrentImageUrl(imageCache.current[level].url);
+      setTopicName(imageCache.current[level].name);
+      return;
+    }
+
+    setIsGeneratingImage(true);
     const result = await generateChallengeImage(level);
+    
+    // 캐시에 저장
+    imageCache.current[level] = result;
+    
     setCurrentImageUrl(result.url);
     setTopicName(result.name);
     setIsGeneratingImage(false);
@@ -69,7 +104,7 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <button 
             onClick={() => setGameStarted(false)}
-            className="text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-2"
+            className="text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-2 transition-colors"
           >
             <i className="fas fa-arrow-left"></i> 목록으로
           </button>
@@ -79,31 +114,32 @@ const App: React.FC = () => {
               <button
                 key={lv}
                 onClick={() => loadLevel(lv)}
+                disabled={isGeneratingImage}
                 className={`w-10 h-10 rounded-xl font-bold transition-all ${
                   currentLevel === lv 
                   ? 'bg-indigo-600 text-white shadow-lg scale-110' 
                   : 'bg-white text-indigo-400 hover:bg-indigo-50 border border-indigo-50'
-                }`}
+                } disabled:opacity-50`}
               >
                 {lv}
               </button>
             ))}
           </div>
 
-          <div className="w-24 text-right">
-            <span className="text-xs font-black text-indigo-300 uppercase tracking-tighter">Gemini AI</span>
+          <div className="hidden sm:block w-24 text-right">
+            <span className="text-xs font-black text-indigo-300 uppercase tracking-tighter">Gemini 2.5</span>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6">
         <div className="bg-white p-5 rounded-3xl shadow-sm border border-indigo-50 mb-6 flex items-center gap-5">
-          <div className="w-14 h-14 bg-gradient-to-tr from-indigo-500 to-purple-500 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg">
+          <div className="w-14 h-14 bg-gradient-to-tr from-indigo-500 to-purple-500 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg flex-shrink-0">
             {currentLevel}
           </div>
-          <div>
-            <h3 className="text-xl font-black text-gray-800">Level {currentLevel}: {topicName || '준비 중...'}</h3>
-            <p className="text-indigo-500 text-sm font-medium">
+          <div className="overflow-hidden">
+            <h3 className="text-xl font-black text-gray-800 truncate">Level {currentLevel}: {topicName || '이미지 생성 중...'}</h3>
+            <p className="text-indigo-500 text-sm font-medium truncate">
               {currentLevel <= 3 ? '큼직한 구역을 시원하게 칠해보세요!' : 
                currentLevel <= 7 ? '색상의 조화를 생각하며 꼼꼼히 채워주세요.' : 
                '최고 난이도입니다! 아주 세밀한 부분까지 마법을 부려보세요.'}
@@ -112,10 +148,19 @@ const App: React.FC = () => {
         </div>
 
         {isGeneratingImage ? (
-          <div className="w-full aspect-square max-w-[600px] mx-auto bg-white rounded-[3rem] shadow-xl flex flex-col items-center justify-center border-4 border-dashed border-indigo-100 animate-pulse">
-            <div className="w-20 h-20 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6"></div>
-            <p className="text-2xl font-title text-indigo-900">도안 생성 중...</p>
-            <p className="text-indigo-400 font-bold mt-2">Level {currentLevel} 도안을 AI가 그리고 있습니다.</p>
+          <div className="w-full aspect-square max-w-[600px] mx-auto bg-white rounded-[3rem] shadow-xl flex flex-col items-center justify-center border-4 border-dashed border-indigo-100">
+            <div className="relative w-24 h-24 mb-8">
+               <div className="absolute inset-0 border-8 border-indigo-50 rounded-full"></div>
+               <div className="absolute inset-0 border-8 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+               <div className="absolute inset-0 flex items-center justify-center text-3xl animate-bounce">🎨</div>
+            </div>
+            <p className="text-3xl font-black text-indigo-900 mb-2">{LOADING_MESSAGES[loadingMsgIdx]}</p>
+            <p className="text-indigo-400 font-bold">AI가 Level {currentLevel} 맞춤 도안을 실시간으로 창작 중입니다.</p>
+            <div className="mt-8 flex gap-2">
+               <div className="w-3 h-3 bg-indigo-200 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+               <div className="w-3 h-3 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+               <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
           </div>
         ) : currentImageUrl && (
           <DrawingCanvas 
