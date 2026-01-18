@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Draw-to-Complete",
+  "description": "An interactive AI drawing game where you complete missing parts of characters, and Gemini evaluates your creativity and accuracy.",
+  "requestFramePermissions": []
+}
