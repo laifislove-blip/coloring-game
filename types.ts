@@ -1,19 +1,39 @@
 
-export type DifficultyLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-
-export interface Feedback {
-  score: number;
-  message: string;
-  isCorrect: boolean;
+export enum Player {
+  BLUE = 'BLUE',
+  RED = 'RED'
 }
 
-// Added CharacterChallenge interface to support the constants.ts file requirements
-export interface CharacterChallenge {
+export interface UnitStats {
   id: string;
   name: string;
+  maxHp: number;
+  hp: number;
+  atk: number;
+  moveRange: number;
+  owner: Player;
+  icon: string;
+  cost: number;
+  isAir: boolean;
+  onlyCastle: boolean;
   description: string;
-  instruction: string;
-  missingPart: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  image: string;
+}
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface GameState {
+  board: (UnitStats | null)[][];
+  blueCastleHp: number;
+  redCastleHp: number;
+  currentPlayer: Player;
+  selectedPos: Position | null;
+  validMoves: Position[];
+  fireballCount: { [key in Player]: number };
+  elixir: { [key in Player]: number };
+  winner: Player | null;
+  summonMode: string | null;
+  fireballMode: boolean; // 파이어볼 모드 활성화 여부
 }

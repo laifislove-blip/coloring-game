@@ -1,5 +1,5 @@
 {
-  "name": "Gemini Draw-to-Complete",
-  "description": "An interactive AI drawing game where you complete missing parts of characters, and Gemini evaluates your creativity and accuracy.",
+  "name": "Castle Breaker: Strategic Chess War",
+  "description": "A strategic board game where two players command unique units to destroy the enemy castle on a 5x10 battlefield.",
   "requestFramePermissions": []
 }
